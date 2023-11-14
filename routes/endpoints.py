@@ -26,31 +26,36 @@ import jwt  # pylint: disable=E0401
 from pylon.core.tools import log  # pylint: disable=E0611,E0401,W0611
 from pylon.core.tools import web  # pylint: disable=E0611,E0401
 
+from tools import context  # pylint: disable=E0401
+
 
 def log_request_args():
     """ Send request args/form/headers to debug log """
-    log.debug("===============")
+    if not context.debug:
+        return
+    #
+    log.info("===============")
     #
     args = flask.request.args
-    log.debug("Args:")
+    log.info("Args:")
     for key, value in args.items():
-        log.debug("--> %s: %s", key, value)
+        log.info("--> %s: %s", key, value)
     #
-    log.debug("---")
+    log.info("---")
     #
     form = flask.request.form
-    log.debug("Form:")
+    log.info("Form:")
     for key, value in form.items():
-        log.debug("--> %s: %s", key, value)
+        log.info("--> %s: %s", key, value)
     #
-    log.debug("---")
+    log.info("---")
     #
     headers = flask.request.headers
-    log.debug("Headers:")
+    log.info("Headers:")
     for key, value in headers.items():
-        log.debug("--> %s: %s", key, value)
+        log.info("--> %s: %s", key, value)
     #
-    log.debug("===============")
+    log.info("===============")
 
 
 class Route:  # pylint: disable=E1101,R0903
