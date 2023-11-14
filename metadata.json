@@ -1,0 +1,6 @@
+{
+  "name": "Centry Auth IDP: OpenID",
+  "version": "0.1",
+  "depends_on": ["auth_core"],
+  "init_after": []
+}
