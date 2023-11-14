@@ -36,14 +36,21 @@ class Method:  # pylint: disable=E1101,R0903,W0201
 
     @web.init()
     def _init(self):
-        # Routes for openid-configuration
-        log.info("Setting static endpoint URLs")
-        with self.context.app.app_context():
-            self.openid_configuration = self.get_openid_configuration()
+        # Static routes for openid-configuration
+        self.openid_configuration = None
+        #
+        if self.descriptor.config.get("use_static_openid_configuration", False):
+            log.info("Setting static endpoint URLs")
+            with self.context.app.app_context():
+                self.openid_configuration = self.get_openid_configuration()
 
     @web.method()
     def get_openid_configuration(self):
         """ Method """
+        if self.descriptor.config.get("use_static_openid_configuration", False) \
+                and self.openid_configuration is not None:
+            return self.openid_configuration
+        #
         self_name = self.descriptor.name
         return {
             "issuer": flask.url_for(f"{self_name}.index", _external=True).rstrip("/"),

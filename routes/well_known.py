@@ -54,7 +54,4 @@ class Route:  # pylint: disable=E1101,R0903
     @web.route("/.well-known/openid-configuration", methods=["GET"])
     def well_known_openid_configuration(self):
         """ Route """
-        if self.descriptor.config.get("use_static_openid_configuration", False):
-            return self.openid_configuration
-        #
         return self.get_openid_configuration()
