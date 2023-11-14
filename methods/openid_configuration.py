@@ -38,7 +38,8 @@ class Method:  # pylint: disable=E1101,R0903,W0201
     def _init(self):
         # Routes for openid-configuration
         log.info("Setting static endpoint URLs")
-        self.openid_configuration = self.get_openid_configuration()
+        with self.context.app.app_context():
+            self.openid_configuration = self.get_openid_configuration()
 
     @web.method()
     def get_openid_configuration(self):
