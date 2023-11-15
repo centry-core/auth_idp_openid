@@ -184,7 +184,7 @@ class Route:  # pylint: disable=E1101,R0903
         clean_stale_data(client_state)
         # Make and save code
         code = secrets.token_urlsafe(
-            self.descriptor.config.get("code_bytes", 32)
+            client_state.get("code_bytes", self.descriptor.config.get("code_bytes", 32))
         )
         client_state["codes"].add(code)
         # Make redirect URL
@@ -277,12 +277,18 @@ class Route:  # pylint: disable=E1101,R0903
         #
         # All checks passed, issue token(s)
         #
-        expires_in = self.descriptor.config.get("token_expires_in", 3600)
+        expires_in = client_state.get(
+            "token_expires_in", self.descriptor.config.get("token_expires_in", 3600)
+        )
         access_token = secrets.token_urlsafe(
-            self.descriptor.config.get("access_token_bytes", 32)
+            client_state.get(
+                "access_token_bytes", self.descriptor.config.get("access_token_bytes", 32)
+            )
         )
         refresh_token = secrets.token_urlsafe(
-            self.descriptor.config.get("refresh_token_bytes", 32)
+            client_state.get(
+                "refresh_token_bytes", self.descriptor.config.get("refresh_token_bytes", 32)
+            )
         )
         issued_at = int(time.time())
         expires_at = issued_at + expires_in
@@ -307,7 +313,7 @@ class Route:  # pylint: disable=E1101,R0903
             id_token["nonce"] = client_meta["args"].get("nonce")
         #
         id_token_claims = make_claims(
-            self.descriptor.config.get("id_token_claims", {}),
+            client_state.get("id_token_claims", {}),
             auth_ctx
         )
         id_token.update(id_token_claims)
@@ -377,7 +383,7 @@ class Route:  # pylint: disable=E1101,R0903
         }
         #
         userinfo_claims = make_claims(
-            self.descriptor.config.get("userinfo_claims", {}),
+            client_state.get("userinfo_claims", {}),
             auth_ctx
         )
         userinfo.update(userinfo_claims)
