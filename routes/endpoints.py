@@ -113,9 +113,11 @@ class Route:  # pylint: disable=E1101,R0903
         redirect_args["code"] = code
         redirect_params = urllib.parse.urlencode(redirect_args)
         redirect_url = f'{redirect_uri}?{redirect_params}'
-        # Map code to auth reference
+        # Map code to meta
         auth_reference = auth.get_auth_reference()
-        client_state["code_to_ref"][code] = auth_reference
+        client_state["code_to_meta"][code] = {
+            "auth_reference": auth_reference,
+        }
         # Auth check
         auth_ctx = auth.get_auth_context()
         if auth_ctx["done"] and \

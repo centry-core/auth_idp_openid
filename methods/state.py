@@ -46,7 +46,7 @@ class Method:  # pylint: disable=E1101,R0903,W0201
                 "access_tokens": set(),
                 "refresh_tokens": set(),
                 #
-                "code_to_ref": {},
+                "code_to_meta": {},
             }
             #
             self.client_state[client_id].update(client_config)
