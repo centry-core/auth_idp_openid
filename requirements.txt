@@ -1,2 +1,3 @@
 cryptography>=36.0.2
 PyJWT>=2.7.0
+jsonpath_rw>=1.4.0

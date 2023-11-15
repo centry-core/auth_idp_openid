@@ -36,6 +36,7 @@ class Method:  # pylint: disable=E1101,R0903,W0201
     def _init(self):
         log.info("Initializing state")
         self.client_state = {}
+        self.access_token_to_meta = {}
         #
         for item in self.descriptor.config.get("clients", []):
             client_config = item.copy()
@@ -43,10 +44,12 @@ class Method:  # pylint: disable=E1101,R0903,W0201
             #
             self.client_state[client_id] = {
                 "codes": set(),
-                "access_tokens": set(),
+                "access_tokens": {},
                 "refresh_tokens": set(),
                 #
                 "code_to_meta": {},
+                "refresh_token_to_meta": {},
+                "access_token_to_meta": self.access_token_to_meta,
             }
             #
             self.client_state[client_id].update(client_config)
