@@ -35,3 +35,18 @@ class Method:  # pylint: disable=E1101,R0903,W0201
     @web.init()
     def _init(self):
         log.info("Initializing state")
+        self.client_state = {}
+        #
+        for item in self.descriptor.config.get("clients", []):
+            client_config = item.copy()
+            client_id = client_config.pop("client_id")
+            #
+            self.client_state[client_id] = {
+                "codes": set(),
+                "access_tokens": set(),
+                "refresh_tokens": set(),
+                #
+                "code_to_ref": {},
+            }
+            #
+            self.client_state[client_id].update(client_config)

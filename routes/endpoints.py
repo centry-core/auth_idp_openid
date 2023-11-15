@@ -19,6 +19,9 @@
 
 import uuid
 import time
+import urllib
+import secrets
+import datetime
 
 import flask  # pylint: disable=E0401
 import jwt  # pylint: disable=E0401
@@ -27,6 +30,7 @@ from pylon.core.tools import log  # pylint: disable=E0611,E0401,W0611
 from pylon.core.tools import web  # pylint: disable=E0611,E0401
 
 from tools import context  # pylint: disable=E0401
+from tools import auth  # pylint: disable=E0401
 
 
 def log_request_args():
@@ -80,16 +84,51 @@ class Route:  # pylint: disable=E1101,R0903
     def authorization(self):
         """ Route """
         log_request_args()
-        #
         args = flask.request.args
         #
-        code = str(uuid.uuid4())
-        state = args.get("state")
+        if "redirect_uri" not in args or not args["redirect_uri"].startswith("http"):
+            return self.access_denied_reply()
+        #
         redirect_uri = args.get("redirect_uri")
+        redirect_args = {}
         #
-        redirect_url = f'{redirect_uri}?code={code}&state={state}'
+        if "state" in args:
+            redirect_args["state"] = args.get("state")
         #
-        return flask.redirect(redirect_url)
+        if "client_id" not in args or args["client_id"] not in self.client_state:
+            redirect_args["error"] = "unauthorized_client"
+            #
+            redirect_params = urllib.parse.urlencode(redirect_args)
+            redirect_url = f'{redirect_uri}?{redirect_params}'
+            return flask.redirect(redirect_url)
+        #
+        client_id = args.get("client_id")
+        client_state = self.client_state[client_id]
+        # Make and save code
+        code = secrets.token_urlsafe(
+            self.descriptor.config.get("code_bytes", 32)
+        )
+        client_state["codes"].add(code)
+        # Make redirect URL
+        redirect_args["code"] = code
+        redirect_params = urllib.parse.urlencode(redirect_args)
+        redirect_url = f'{redirect_uri}?{redirect_params}'
+        # Map code to auth reference
+        auth_reference = auth.get_auth_reference()
+        client_state["code_to_ref"][code] = auth_reference
+        # Auth check
+        auth_ctx = auth.get_auth_context()
+        if auth_ctx["done"] and \
+                (
+                        auth_ctx["expiration"] is None or
+                        datetime.datetime.now() < auth_ctx["expiration"]
+                ):
+            # Auth done
+            return flask.redirect(redirect_url)
+        # Auth needed or expired
+        auth.set_auth_context({})
+        target_token = auth.sign_target_url(redirect_url)
+        return auth.access_needed_redirect(target_token)
 
     @web.route("/endpoints/token", methods=["POST"])
     def token(self):
@@ -131,8 +170,6 @@ class Route:  # pylint: disable=E1101,R0903
     @web.route("/endpoints/jwks", methods=["GET"])
     def jwks(self):
         """ Route """
-        log_request_args()
-        #
         public_jwk = jwt.get_algorithm_by_name("RS256").to_jwk(
             self.rsa_key.public_key(), as_dict=True,
         )
