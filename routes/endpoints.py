@@ -193,22 +193,6 @@ class Route:  # pylint: disable=E1101,R0903
         client_id = args.get("client_id")
         client_state = self.client_state[client_id]
         clean_stale_data(client_state)
-        # Make and save code
-        code = secrets.token_urlsafe(
-            client_state.get("code_bytes", self.descriptor.config.get("code_bytes", 32))
-        )
-        client_state["codes"].add(code)
-        # Make redirect URL
-        redirect_args["code"] = code
-        redirect_params = urllib.parse.urlencode(redirect_args)
-        redirect_url = f'{redirect_uri}?{redirect_params}'
-        # Map code to meta
-        auth_reference = auth.get_auth_reference()
-        client_state["code_to_meta"][code] = {
-            "auth_reference": auth_reference,
-            "args": args.to_dict().copy(),
-            "scope": scope,
-        }
         # Auth check
         auth_ctx = auth.get_auth_context()
         if auth_ctx["done"] and \
@@ -216,11 +200,32 @@ class Route:  # pylint: disable=E1101,R0903
                         auth_ctx["expiration"] is None or
                         datetime.datetime.now() < auth_ctx["expiration"]
                 ):
+            # Make and save code
+            code = secrets.token_urlsafe(
+                client_state.get("code_bytes", self.descriptor.config.get("code_bytes", 32))
+            )
+            client_state["codes"].add(code)
+            # Make redirect URL
+            redirect_args["code"] = code
+            redirect_params = urllib.parse.urlencode(redirect_args)
+            redirect_url = f'{redirect_uri}?{redirect_params}'
+            # Map code to meta
+            auth_reference = auth.get_auth_reference()
+            client_state["code_to_meta"][code] = {
+                "auth_reference": auth_reference,
+                "args": args.to_dict().copy(),
+                "scope": scope,
+            }
             # Auth done
             return flask.redirect(redirect_url)
         # Auth needed or expired
+        openid_configuration = self.get_openid_configuration()
+        authorization_uri = openid_configuration.get("authorization_endpoint")
+        authorization_params = urllib.parse.urlencode(args.to_dict().copy())
+        authorization_url = f'{authorization_uri}?{authorization_params}'
+        #
         auth.set_auth_context({})
-        target_token = auth.sign_target_url(redirect_url)
+        target_token = auth.sign_target_url(authorization_url)
         return auth.access_needed_redirect(target_token)
 
     @web.route("/endpoints/token", methods=["POST"])
