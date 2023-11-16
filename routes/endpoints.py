@@ -293,6 +293,8 @@ class Route:  # pylint: disable=E1101,R0903
         issued_at = int(time.time())
         expires_at = issued_at + expires_in
         #
+        log.info("Client meta: %s", client_meta)
+        #
         openid_configuration = self.get_openid_configuration()
         auth_ctx = self.context.rpc_manager.call.auth_get_referenced_auth_context(
             client_meta["auth_reference"]
