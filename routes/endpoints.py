@@ -98,6 +98,17 @@ def make_claim_item(item_type, item_data, auth_ctx):
     if item_type == "nameid_map":
         return item_data.get("map", {}).get(auth_ctx_nameid, ...)
     #
+    if item_type == "jsonpath_format":
+        variables = {}
+        #
+        for key, schema in item_data.get("vars", {}).items():
+            try:
+                variables[key] = jsonpath_rw.parse(schema).find(auth_ctx)[0].value
+            except:  # pylint: disable=W0702
+                log.exception("Failed to set var data: %s -> %s", key, schema)
+        #
+        return item_data.get("template", "").format(**variables)
+    #
     return ...
 
 
