@@ -226,7 +226,7 @@ class Route:  # pylint: disable=E1101,R0903
             auth_type = auth_data[0]
             #
             if auth_type.lower() == "basic":
-                auth_info = base64.b64decode(auth_data[1]).split(":", 1)
+                auth_info = base64.b64decode(auth_data[1]).decode().split(":", 1)
                 #
                 client_id = auth_info[0]
                 client_secret = auth_info[1]
@@ -292,8 +292,6 @@ class Route:  # pylint: disable=E1101,R0903
         )
         issued_at = int(time.time())
         expires_at = issued_at + expires_in
-        #
-        log.info("Client meta: %s", client_meta)
         #
         openid_configuration = self.get_openid_configuration()
         auth_ctx = self.context.rpc_manager.call.auth_get_referenced_auth_context(
