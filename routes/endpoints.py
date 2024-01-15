@@ -153,11 +153,14 @@ class Route:  # pylint: disable=E1101,R0903
     """
 
 
-    @web.route("/endpoints/authorization", methods=["GET"])
+    @web.route("/endpoints/authorization", methods=["GET", "POST"])
     def authorization(self):  # pylint: disable=R0911
         """ Route """
         log_request_args()
-        args = flask.request.args
+        if flask.request.method == "POST":
+            args = flask.request.form
+        else:
+            args = flask.request.args
         #
         if "redirect_uri" not in args or not args["redirect_uri"].startswith("http"):
             return self.access_denied_reply()
