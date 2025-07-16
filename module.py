@@ -17,8 +17,8 @@
 
 """ Module """
 
-from pylon.core.tools import log  # pylint: disable=E0401
-from pylon.core.tools import module  # pylint: disable=E0401
+from pylon.core.tools import log  # pylint: disable=E0401,E0611
+from pylon.core.tools import module  # pylint: disable=E0401,E0611
 
 
 class Module(module.ModuleModel):
@@ -40,4 +40,4 @@ class Module(module.ModuleModel):
         """ De-init module """
         log.info("De-initializing module")
         # De-init
-        # self.descriptor.deinit_all()
+        self.descriptor.deinit_all()

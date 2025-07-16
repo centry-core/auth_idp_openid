@@ -32,7 +32,7 @@ from pylon.core.tools import log  # pylint: disable=E0611,E0401,W0611
 from pylon.core.tools import web  # pylint: disable=E0611,E0401
 
 from tools import context  # pylint: disable=E0401
-from tools import auth  # pylint: disable=E0401
+from tools import auth_core  # pylint: disable=E0401
 
 
 def log_request_args():
@@ -163,7 +163,7 @@ class Route:  # pylint: disable=E1101,R0903
             args = flask.request.args
         #
         if "redirect_uri" not in args or not args["redirect_uri"].startswith("http"):
-            return auth.access_denied_reply()
+            return auth_core.access_denied_reply()
         #
         redirect_uri = args.get("redirect_uri")
         redirect_args = {}
@@ -197,7 +197,7 @@ class Route:  # pylint: disable=E1101,R0903
         client_state = self.client_state[client_id]
         clean_stale_data(client_state)
         # Auth check
-        auth_ctx = auth.get_auth_context()
+        auth_ctx = auth_core.get_auth_context()
         if auth_ctx["done"] and \
                 (
                         auth_ctx["expiration"] is None or
@@ -213,7 +213,7 @@ class Route:  # pylint: disable=E1101,R0903
             redirect_params = urllib.parse.urlencode(redirect_args)
             redirect_url = f'{redirect_uri}?{redirect_params}'
             # Map code to meta
-            auth_reference = auth.get_auth_reference()
+            auth_reference = auth_core.get_auth_reference()
             client_state["code_to_meta"][code] = {
                 "auth_reference": auth_reference,
                 "args": args.to_dict().copy(),
@@ -227,9 +227,9 @@ class Route:  # pylint: disable=E1101,R0903
         authorization_params = urllib.parse.urlencode(args.to_dict().copy())
         authorization_url = f'{authorization_uri}?{authorization_params}'
         #
-        auth.set_auth_context({})
-        target_token = auth.sign_target_url(authorization_url)
-        return auth.access_needed_redirect(target_token)
+        auth_core.set_auth_context({})
+        target_token = auth_core.sign_target_url(authorization_url)
+        return auth_core.access_needed_redirect(target_token)
 
     @web.route("/endpoints/token", methods=["POST"])
     def token(self):  # pylint: disable=R0914,R0912,R0915
@@ -313,7 +313,7 @@ class Route:  # pylint: disable=E1101,R0903
         expires_at = issued_at + expires_in
         #
         openid_configuration = self.get_openid_configuration()
-        auth_ctx = self.context.rpc_manager.call.auth_get_referenced_auth_context(
+        auth_ctx = auth_core.get_referenced_auth_context(
             client_meta["auth_reference"]
         )
         #
@@ -391,7 +391,7 @@ class Route:  # pylint: disable=E1101,R0903
         if access_token not in client_state["access_tokens"]:
             return {}, 401
         #
-        auth_ctx = self.context.rpc_manager.call.auth_get_referenced_auth_context(
+        auth_ctx = auth_core.get_referenced_auth_context(
             client_meta["auth_reference"]
         )
         #
@@ -431,4 +431,4 @@ class Route:  # pylint: disable=E1101,R0903
             except:  # pylint: disable=W0702
                 pass
         #
-        return flask.redirect(auth.descriptor.config.get("default_logout_url", "/"))
+        return flask.redirect(auth_core.descriptor.config.get("default_logout_url", "/"))
