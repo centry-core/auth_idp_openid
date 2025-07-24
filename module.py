@@ -20,6 +20,8 @@
 from pylon.core.tools import log  # pylint: disable=E0401,E0611
 from pylon.core.tools import module  # pylint: disable=E0401,E0611
 
+from tools import auth_core  # pylint: disable=E0401
+
 
 class Module(module.ModuleModel):
     """ Pylon module """
@@ -33,7 +35,9 @@ class Module(module.ModuleModel):
         log.info("Initializing module")
         # Init
         self.descriptor.init_all(
-            url_prefix=self.descriptor.config.get("url_prefix", None),
+            url_prefix=auth_core.get_relative_url_prefix(
+                self.descriptor, self.descriptor.config.get("url_prefix", None)
+            ),
         )
 
     def deinit(self):
