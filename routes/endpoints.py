@@ -154,7 +154,7 @@ class Route:  # pylint: disable=E1101,R0903
 
 
     @web.route("/endpoints/authorization", methods=["GET", "POST"])
-    def authorization(self):  # pylint: disable=R0911,R0914
+    def authorization(self):  # pylint: disable=R0911,R0912,R0914,R0915
         """ Route """
         log_request_args()
         if flask.request.method == "POST":
@@ -182,7 +182,14 @@ class Route:  # pylint: disable=E1101,R0903
                     "invalid_request", redirect_args, redirect_uri
                 )
         #
-        if args.get("response_type") != "code":
+        target_response_type = args.get("response_type")
+        target_response_mode = args.get("response_mode", "query")
+        #
+        if target_response_type == "code":
+            pass
+        elif target_response_type == "id_token" and target_response_mode == "form_post":
+            pass
+        else:
             return make_error_response(
                 "unsupported_response_type", redirect_args, redirect_uri
             )
@@ -196,6 +203,8 @@ class Route:  # pylint: disable=E1101,R0903
         client_id = args.get("client_id")
         client_state = self.client_state[client_id]
         clean_stale_data(client_state)
+        #
+        openid_configuration = self.get_openid_configuration()
         # Auth check
         auth_ctx = auth.get_auth_context()
         if auth_ctx["done"] and \
@@ -203,26 +212,72 @@ class Route:  # pylint: disable=E1101,R0903
                         auth_ctx["expiration"] is None or
                         datetime.datetime.now() < auth_ctx["expiration"]
                 ):
-            # Make and save code
-            code = secrets.token_urlsafe(
-                client_state.get("code_bytes", self.descriptor.config.get("code_bytes", 32))
+            #
+            if target_response_type == "code":
+                # Make and save code
+                code = secrets.token_urlsafe(
+                    client_state.get("code_bytes", self.descriptor.config.get("code_bytes", 32))
+                )
+                client_state["codes"].add(code)
+                # Make redirect URL
+                redirect_args["code"] = code
+                redirect_params = urllib.parse.urlencode(redirect_args)
+                redirect_url = f'{redirect_uri}?{redirect_params}'  # NB: POST should be preserved?
+                # Map code to meta
+                auth_reference = auth.get_auth_reference()
+                client_state["code_to_meta"][code] = {
+                    "auth_reference": auth_reference,
+                    "args": args.to_dict().copy(),
+                    "scope": scope,
+                }
+                # Auth done
+                return flask.redirect(redirect_url)
+            #
+            # else: id_token + form_post
+            #
+            expires_in = client_state.get(
+                "token_expires_in", self.descriptor.config.get("token_expires_in", 3600)
             )
-            client_state["codes"].add(code)
-            # Make redirect URL
-            redirect_args["code"] = code
-            redirect_params = urllib.parse.urlencode(redirect_args)
-            redirect_url = f'{redirect_uri}?{redirect_params}'
-            # Map code to meta
-            auth_reference = auth.get_auth_reference()
-            client_state["code_to_meta"][code] = {
-                "auth_reference": auth_reference,
-                "args": args.to_dict().copy(),
-                "scope": scope,
+            #
+            issued_at = int(time.time())
+            expires_at = issued_at + expires_in
+            #
+            auth_ctx_nameid = auth_ctx["provider_attr"]["nameid"]
+            #
+            id_token = {
+                "iss": openid_configuration.get("issuer"),
+                "aud": client_id,
+                "iat": issued_at,
+                "exp": expires_at,
+                #
+                "sub": str(uuid.uuid5(uuid.NAMESPACE_URL, auth_ctx_nameid)),
             }
-            # Auth done
-            return flask.redirect(redirect_url)
+            #
+            if "nonce" in args:
+                id_token["nonce"] = args.get("nonce")
+            #
+            id_token_claims = make_claims(
+                client_state.get("id_token_claims", {}),
+                auth_ctx
+            )
+            id_token.update(id_token_claims)
+            #
+            redirect_args["id_token"] = jwt.encode(id_token, self.rsa_key, algorithm="RS256")
+            #
+            redirect_parameters = [
+                {
+                    "name": key,
+                    "value": value,
+                }
+                for key, value in redirect_args.items()
+            ]
+            #
+            return self.descriptor.render_template(
+                "redirect.html",
+                action=redirect_uri,
+                parameters=redirect_parameters,
+            )
         # Auth needed or expired
-        openid_configuration = self.get_openid_configuration()
         authorization_uri = openid_configuration.get("authorization_endpoint")
         authorization_params = urllib.parse.urlencode(args.to_dict().copy())
         authorization_url = f'{authorization_uri}?{authorization_params}'
