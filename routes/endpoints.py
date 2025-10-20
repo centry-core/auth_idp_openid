@@ -481,6 +481,7 @@ class Route:  # pylint: disable=E1101,R0903
             redirect_uri = args.get("post_logout_redirect_uri")
             #
             try:
+                # NB: aud?
                 jwt.decode(id_token, self.rsa_key.public_key(), algorithms=["RS256"])
                 return flask.redirect(redirect_uri)
             except:  # pylint: disable=W0702
